@@ -65,6 +65,15 @@
     "vue": "^3.2.45"
   },
   "dependencies": {
+    "@hufe921/canvas-editor-plugin-barcode1d": "^0.0.3",
+    "@hufe921/canvas-editor-plugin-barcode2d": "^0.0.4",
+    "@hufe921/canvas-editor-plugin-case": "^0.0.1",
+    "@hufe921/canvas-editor-plugin-codeblock": "^0.0.2",
+    "@hufe921/canvas-editor-plugin-diagram": "^0.0.2",
+    "@hufe921/canvas-editor-plugin-docx": "^0.0.5",
+    "@hufe921/canvas-editor-plugin-excel": "^0.0.1",
+    "@hufe921/canvas-editor-plugin-floating-toolbar": "^0.0.4",
+    "@hufe921/canvas-editor-plugin-special-characters": "^0.0.3",
     "prismjs": "^1.27.0"
   },
   "simple-git-hooks": {

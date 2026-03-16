@@ -568,6 +568,39 @@ ul {
   background-image: url('./assets/images/block.svg');
 }
 
+/* 插件按钮样式 */
+.menu-item__docx-import i { background-image: url('./assets/images/docx-import.svg'); }
+.menu-item__docx-export i { background-image: url('./assets/images/docx-export.svg'); }
+.menu-item__excel-import i { background-image: url('./assets/images/excel-import.svg'); }
+.menu-item__diagram i { background-image: url('./assets/images/diagram.svg'); }
+.menu-item__barcode1d i { background-image: url('./assets/images/barcode.svg'); }
+.menu-item__barcode2d i { background-image: url('./assets/images/qrcode.svg'); }
+.menu-item__codeblock-insert i { background-image: url('./assets/images/code.svg'); }
+.menu-item__uppercase i { background-image: url('./assets/images/uppercase.svg'); }
+.menu-item__lowercase i { background-image: url('./assets/images/lowercase.svg'); }
+.menu-item__special-chars i { background-image: url('./assets/images/special-char.svg'); }
+
+/* 浮动工具栏扩展按钮样式 */
+.ce-floating-toolbar .ce-uppercase,
+.ce-floating-toolbar .ce-lowercase {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  cursor: pointer;
+}
+.ce-floating-toolbar .ce-uppercase i,
+.ce-floating-toolbar .ce-lowercase i {
+  display: none;
+}
+.ce-floating-toolbar .ce-uppercase {
+  background-image: url('./assets/images/uppercase.svg');
+}
+.ce-floating-toolbar .ce-lowercase {
+  background-image: url('./assets/images/lowercase.svg');
+}
+
 .menu-item .menu-item__control .options {
   width: 55px;
 }
@@ -1076,4 +1109,8 @@ ul {
 
 .ce-contextmenu-word-tool {
   background-image: url('./assets/images/word-tool.svg');
+}
+
+.ce-contextmenu-export-docx {
+  background-image: url('./assets/images/docx-export.svg');
 }

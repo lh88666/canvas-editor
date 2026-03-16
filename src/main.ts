@@ -1,6 +1,18 @@
 import { commentList, data, options } from './mock'
 import './style.css'
 import prism from 'prismjs'
+
+// 插件导入
+import docxPlugin from '@hufe921/canvas-editor-plugin-docx'
+import excelPlugin from '@hufe921/canvas-editor-plugin-excel'
+import floatingToolbarPlugin from '@hufe921/canvas-editor-plugin-floating-toolbar'
+import diagramPlugin from '@hufe921/canvas-editor-plugin-diagram'
+import barcode1DPlugin from '@hufe921/canvas-editor-plugin-barcode1d'
+import barcode2DPlugin from '@hufe921/canvas-editor-plugin-barcode2d'
+import codeblockPlugin from '@hufe921/canvas-editor-plugin-codeblock'
+import casePlugin from '@hufe921/canvas-editor-plugin-case'
+import specialCharactersPlugin from '@hufe921/canvas-editor-plugin-special-characters'
+
 import Editor, {
   BlockType,
   Command,
@@ -62,6 +74,50 @@ window.onload = function () {
     },
     options
   )
+
+  // 注册插件
+  instance.use(docxPlugin as any)
+  instance.use(excelPlugin as any)
+  instance.use(floatingToolbarPlugin as any)
+
+  // 扩展浮动工具栏：添加转大写/转小写按钮
+  const toolbarObserver = new MutationObserver(() => {
+    const toolbar = document.querySelector('.ce-floating-toolbar')
+    if (toolbar && !toolbar.querySelector('.ce-uppercase')) {
+      // 找到减小字号按钮
+      const sizeMinus = toolbar.querySelector('.ce-size-minus')
+      if (sizeMinus) {
+        // 创建转大写按钮
+        const uppercaseBtn = document.createElement('div')
+        uppercaseBtn.className = 'ce-uppercase'
+        const uppercaseIcon = document.createElement('i')
+        uppercaseBtn.appendChild(uppercaseIcon)
+        uppercaseBtn.title = '转大写'
+        uppercaseBtn.onclick = () => cmd.executeUpperCase()
+
+        // 创建转小写按钮
+        const lowercaseBtn = document.createElement('div')
+        lowercaseBtn.className = 'ce-lowercase'
+        const lowercaseIcon = document.createElement('i')
+        lowercaseBtn.appendChild(lowercaseIcon)
+        lowercaseBtn.title = '转小写'
+        lowercaseBtn.onclick = () => cmd.executeLowerCase()
+
+        // 在减小字号后面插入
+        sizeMinus.after(uppercaseBtn, lowercaseBtn)
+      }
+    }
+  })
+
+  toolbarObserver.observe(document.body, { childList: true, subtree: true })
+
+  instance.use(diagramPlugin as any)
+  instance.use(barcode1DPlugin as any)
+  instance.use(barcode2DPlugin as any)
+  instance.use(codeblockPlugin as any)
+  instance.use(casePlugin as any)
+  instance.use(specialCharactersPlugin as any)
+
   console.log('实例: ', instance)
   // cypress使用
   Reflect.set(window, 'editor', instance)
@@ -1162,6 +1218,157 @@ window.onload = function () {
     })
   }
 
+  // ========== 插件功能 ==========
+  // 获取插件方法的类型断言
+  const cmd = instance.command as any
+
+  // DOCX 导入
+  const docxImportDom = document.querySelector<HTMLDivElement>('.menu-item__docx-import')!
+  const docxInput = document.createElement('input')
+  docxInput.type = 'file'
+  docxInput.accept = '.docx'
+  docxInput.style.display = 'none'
+  document.body.appendChild(docxInput)
+  docxImportDom.onclick = () => docxInput.click()
+  docxInput.onchange = async () => {
+    const file = docxInput.files?.[0]
+    if (!file) return
+    const buffer = await file.arrayBuffer()
+    cmd.executeImportDocx({ arrayBuffer: buffer })
+    docxInput.value = ''
+  }
+
+  // DOCX 导出
+  const docxExportDom = document.querySelector<HTMLDivElement>('.menu-item__docx-export')!
+  docxExportDom.onclick = () => {
+    cmd.executeExportDocx({ fileName: 'document' })
+  }
+
+  // Excel 导入
+  const excelImportDom = document.querySelector<HTMLDivElement>('.menu-item__excel-import')!
+  const excelInput = document.createElement('input')
+  excelInput.type = 'file'
+  excelInput.accept = '.xlsx,.xls'
+  excelInput.style.display = 'none'
+  document.body.appendChild(excelInput)
+  excelImportDom.onclick = () => excelInput.click()
+  excelInput.onchange = async () => {
+    const file = excelInput.files?.[0]
+    if (!file) return
+    const buffer = await file.arrayBuffer()
+    cmd.executeImportExcel({ arrayBuffer: buffer })
+    excelInput.value = ''
+  }
+
+  // 图表绘制
+  const diagramDom = document.querySelector<HTMLDivElement>('.menu-item__diagram')!
+  diagramDom.onclick = () => {
+    cmd.executeLoadDiagram({
+      lang: 'zh',
+      onDestroy: (message: any) => {
+        console.log('图表关闭', message)
+        // message 包含图表数据，优先使用 data(base64图片)，其次使用 xml(SVG)
+        const chartData = message?.data || message?.xml
+        if (chartData) {
+          if (message?.data) {
+            // data 已经是 base64 图片，直接插入
+            const base64 = message.data
+            const img = new Image()
+            img.onload = () => {
+              cmd.executeInsertElementList([{
+                type: 'image',
+                value: base64,
+                width: img.width,
+                height: img.height
+              }])
+            }
+            img.onerror = () => {
+              console.error('图片加载失败')
+            }
+            img.src = base64
+          } else if (message?.xml) {
+            // xml 是 SVG 格式，需要转换
+            const svgData = message.xml
+            const img = new Image()
+            img.onload = () => {
+              const canvas = document.createElement('canvas')
+              canvas.width = img.width
+              canvas.height = img.height
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.drawImage(img, 0, 0)
+                const base64 = canvas.toDataURL('image/png')
+                cmd.executeInsertElementList([{
+                  type: 'image',
+                  value: base64,
+                  width: img.width,
+                  height: img.height
+                }])
+              }
+            }
+            let svgContent = svgData
+            if (!svgContent.includes('xmlns')) {
+              svgContent = svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+            }
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgContent)))
+          }
+        }
+      }
+    })
+  }
+
+  // 条形码 1D
+  const barcode1dDom = document.querySelector<HTMLDivElement>('.menu-item__barcode1d')!
+  barcode1dDom.onclick = () => {
+    const content = prompt('请输入条形码内容:', '123456789')
+    if (content) {
+      cmd.executeInsertBarcode1D(content, 200, 100)
+    }
+  }
+
+  // 条形码 2D (二维码)
+  const barcode2dDom = document.querySelector<HTMLDivElement>('.menu-item__barcode2d')!
+  barcode2dDom.onclick = () => {
+    const content = prompt('请输入二维码内容:', 'https://example.com')
+    if (content) {
+      cmd.executeInsertBarcode2D(content, 150, 150)
+    }
+  }
+
+  // 插入代码块
+  const codeblockInsertDom = document.querySelector<HTMLDivElement>('.menu-item__codeblock-insert')!
+  codeblockInsertDom.onclick = () => {
+    const content = prompt('请输入代码内容:', 'function hello() {\n  console.log("Hello World");\n}')
+    if (content) {
+      cmd.executeInsertCodeblock(content)
+    }
+  }
+
+  // 转大写
+  const uppercaseDom = document.querySelector<HTMLDivElement>('.menu-item__uppercase')!
+  uppercaseDom.onclick = () => {
+    cmd.executeUpperCase()
+  }
+
+  // 转小写
+  const lowercaseDom = document.querySelector<HTMLDivElement>('.menu-item__lowercase')!
+  lowercaseDom.onclick = () => {
+    cmd.executeLowerCase()
+  }
+
+  // 特殊字符
+  const specialCharsDom = document.querySelector<HTMLDivElement>('.menu-item__special-chars')!
+  specialCharsDom.onclick = () => {
+    cmd.executeOpenSpecialCharactersDialog({
+      onSelect: (char: string) => {
+        // 选中的字符直接插入到编辑器
+        cmd.executeInsertElementList([{ value: char }])
+      }
+    })
+  }
+
+  // ========== 插件功能结束 ==========
+
   // 5. | 搜索&替换 | 打印 |
   const searchCollapseDom = document.querySelector<HTMLDivElement>(
     '.menu-item__search__collapse'
@@ -1998,6 +2205,16 @@ window.onload = function () {
       },
       callback: (command: Command) => {
         command.executeClearGraffiti()
+      }
+    },
+    {
+      name: '导出 DOCX',
+      icon: 'export-docx',
+      when: payload => {
+        return !payload.isReadonly
+      },
+      callback: () => {
+        cmd.executeExportDocx({ fileName: 'document' })
       }
     }
   ])
