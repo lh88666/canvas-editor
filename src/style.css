@@ -1114,3 +1114,11 @@ ul {
 .ce-contextmenu-export-docx {
   background-image: url('./assets/images/docx-export.svg');
 }
+
+.menu-item__word-tool i {
+  background-image: url('./assets/images/word-tool.svg');
+}
+
+.menu-item__signature i {
+  background-image: url('./assets/images/signature.svg');
+}

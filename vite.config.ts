@@ -38,9 +38,20 @@ export default defineConfig(({ mode }) => {
     }
   }
   return {
-    base: `/${name}/`,
+    base: '/',
     server: {
       host: '0.0.0.0'
+    },
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          blank: path.resolve(__dirname, 'blank.html'),
+          docx: path.resolve(__dirname, 'docx.html'),
+          excel: path.resolve(__dirname, 'excel.html'),
+          example: path.resolve(__dirname, 'example.html')
+        }
+      }
     }
   }
 })

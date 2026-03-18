@@ -40,6 +40,92 @@ import { Signature } from './components/signature/Signature'
 import { debounce, nextTick, scrollIntoView } from './utils'
 
 window.onload = function () {
+  // 根据当前页面路径判断 mode
+  // script 标签的查询参数不会出现在 window.location.search 中
+  const pathname = window.location.pathname
+  console.log('Current pathname:', pathname)
+  let mode = 'example'
+  if (pathname.includes('blank')) {
+    mode = 'blank'
+  } else if (pathname.includes('docx')) {
+    mode = 'docx'
+  } else if (pathname.includes('excel')) {
+    mode = 'excel'
+  }
+  console.log('Current mode:', mode)
+
+  // 根据 mode 初始化不同的配置
+  let editorContent: { header: IElement[]; main: IElement[]; footer: IElement[] }
+  let editorOptions = options
+
+  switch (mode) {
+    case 'blank':
+      // 空白文档：无内容，不带水印
+      editorContent = {
+        header: [],
+        main: [],
+        footer: []
+      }
+      editorOptions = {
+        ...options,
+        watermark: undefined
+      }
+      break
+    case 'docx':
+      // DOCX 导入：空内容，不带水印（显示导入遮罩）
+      editorContent = {
+        header: [],
+        main: [],
+        footer: []
+      }
+      editorOptions = {
+        ...options,
+        watermark: undefined
+      }
+      break
+    case 'excel':
+      // Excel 导入：空内容，不带水印（显示导入遮罩）
+      editorContent = {
+        header: [],
+        main: [],
+        footer: []
+      }
+      editorOptions = {
+        ...options,
+        watermark: undefined
+      }
+      break
+    case 'example':
+    default:
+      // 示例文档：加载 mock 数据，带水印
+      editorContent = {
+        header: [
+          {
+            value: '第一人民医院',
+            size: 32,
+            rowFlex: RowFlex.CENTER
+          },
+          {
+            value: '\n门诊病历',
+            size: 18,
+            rowFlex: RowFlex.CENTER
+          },
+          {
+            value: '\n',
+            type: ElementType.SEPARATOR
+          }
+        ],
+        main: data,
+        footer: [
+          {
+            value: 'canvas-editor',
+            size: 12
+          }
+        ]
+      }
+      break
+  }
+
   const isApple =
     typeof navigator !== 'undefined' && /Mac OS X/.test(navigator.userAgent)
 
@@ -47,38 +133,150 @@ window.onload = function () {
   const container = document.querySelector<HTMLDivElement>('.editor')!
   const instance = new Editor(
     container,
-    {
-      header: [
-        {
-          value: '第一人民医院',
-          size: 32,
-          rowFlex: RowFlex.CENTER
-        },
-        {
-          value: '\n门诊病历',
-          size: 18,
-          rowFlex: RowFlex.CENTER
-        },
-        {
-          value: '\n',
-          type: ElementType.SEPARATOR
-        }
-      ],
-      main: <IElement[]>data,
-      footer: [
-        {
-          value: 'canvas-editor',
-          size: 12
-        }
-      ]
-    },
-    options
+    editorContent,
+    editorOptions
   )
 
   // 注册插件
   instance.use(docxPlugin as any)
   instance.use(excelPlugin as any)
   instance.use(floatingToolbarPlugin as any)
+
+  // 根据 mode 自动显示导入遮罩层
+  if (mode === 'docx' || mode === 'excel') {
+    const cmd = instance.command as any
+    const fileType = mode === 'docx' ? 'DOCX 文件' : 'Excel 文件'
+    const fileExt = mode === 'docx' ? '.docx' : '.xlsx,.xls'
+
+    // 创建遮罩层
+    const mask = document.createElement('div')
+    mask.id = 'import-mask'
+    mask.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `
+
+    // 创建导入面板
+    const panel = document.createElement('div')
+    panel.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 40px 50px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 400px;
+    `
+
+    // 标题
+    const title = document.createElement('h2')
+    title.style.cssText = `
+      margin: 0 0 20px;
+      font-size: 24px;
+      color: #333;
+    `
+    title.textContent = `导入 ${fileType}`
+
+    // 说明文字
+    const desc = document.createElement('p')
+    desc.style.cssText = `
+      margin: 0 0 30px;
+      font-size: 14px;
+      color: #666;
+      line-height: 1.6;
+    `
+    desc.textContent = '选择要导入的文件，导入后内容将显示在编辑器中'
+
+    // 文件输入
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = fileExt
+    fileInput.id = 'import-file-input'
+    fileInput.style.display = 'none'
+    document.body.appendChild(fileInput)
+
+    // 选择文件按钮
+    const selectBtn = document.createElement('button')
+    selectBtn.style.cssText = `
+      display: inline-block;
+      padding: 12px 32px;
+      font-size: 16px;
+      color: white;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    `
+    selectBtn.textContent = '选择文件'
+    selectBtn.onmouseenter = () => {
+      selectBtn.style.transform = 'translateY(-2px)'
+      selectBtn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)'
+    }
+    selectBtn.onmouseleave = () => {
+      selectBtn.style.transform = 'translateY(0)'
+      selectBtn.style.boxShadow = 'none'
+    }
+    selectBtn.onclick = () => fileInput.click()
+
+    // 状态提示
+    const status = document.createElement('p')
+    status.style.cssText = `
+      margin: 20px 0 0;
+      font-size: 14px;
+      color: #999;
+    `
+
+    // 组装面板
+    panel.appendChild(title)
+    panel.appendChild(desc)
+    panel.appendChild(selectBtn)
+    panel.appendChild(status)
+    mask.appendChild(panel)
+    document.body.appendChild(mask)
+
+    // 文件选择处理
+    fileInput.onchange = async () => {
+      const file = fileInput.files?.[0]
+      if (!file) return
+
+      // 显示导入中状态
+      selectBtn.textContent = '导入中...'
+      selectBtn.disabled = true
+      status.textContent = `正在导入 ${file.name}...`
+      status.style.color = '#667eea'
+
+      try {
+        const buffer = await file.arrayBuffer()
+        if (mode === 'docx') {
+          cmd.executeImportDocx({ arrayBuffer: buffer })
+        } else {
+          cmd.executeImportExcel({ arrayBuffer: buffer })
+        }
+
+        // 导入成功，关闭遮罩
+        mask.style.opacity = '0'
+        mask.style.transition = 'opacity 0.3s'
+        setTimeout(() => {
+          mask.remove()
+          fileInput.remove()
+        }, 300)
+      } catch (error) {
+        // 导入失败
+        selectBtn.textContent = '选择文件'
+        selectBtn.disabled = false
+        status.textContent = '导入失败，请重试'
+        status.style.color = '#f56c6c'
+      }
+    }
+  }
 
   // 扩展浮动工具栏：添加转大写/转小写按钮
   const toolbarObserver = new MutationObserver(() => {
@@ -1222,14 +1420,14 @@ window.onload = function () {
   // 获取插件方法的类型断言
   const cmd = instance.command as any
 
-  // DOCX 导入
-  const docxImportDom = document.querySelector<HTMLDivElement>('.menu-item__docx-import')!
+  // DOCX 导入（元素可能不存在）
+  const docxImportDom = document.querySelector<HTMLDivElement>('.menu-item__docx-import')
   const docxInput = document.createElement('input')
   docxInput.type = 'file'
   docxInput.accept = '.docx'
   docxInput.style.display = 'none'
   document.body.appendChild(docxInput)
-  docxImportDom.onclick = () => docxInput.click()
+  docxImportDom?.addEventListener('click', () => docxInput.click())
   docxInput.onchange = async () => {
     const file = docxInput.files?.[0]
     if (!file) return
@@ -1238,20 +1436,20 @@ window.onload = function () {
     docxInput.value = ''
   }
 
-  // DOCX 导出
-  const docxExportDom = document.querySelector<HTMLDivElement>('.menu-item__docx-export')!
-  docxExportDom.onclick = () => {
+  // DOCX 导出（元素可能不存在）
+  const docxExportDom = document.querySelector<HTMLDivElement>('.menu-item__docx-export')
+  docxExportDom?.addEventListener('click', () => {
     cmd.executeExportDocx({ fileName: 'document' })
-  }
+  })
 
-  // Excel 导入
-  const excelImportDom = document.querySelector<HTMLDivElement>('.menu-item__excel-import')!
+  // Excel 导入（元素可能不存在）
+  const excelImportDom = document.querySelector<HTMLDivElement>('.menu-item__excel-import')
   const excelInput = document.createElement('input')
   excelInput.type = 'file'
   excelInput.accept = '.xlsx,.xls'
   excelInput.style.display = 'none'
   document.body.appendChild(excelInput)
-  excelImportDom.onclick = () => excelInput.click()
+  excelImportDom?.addEventListener('click', () => excelInput.click())
   excelInput.onchange = async () => {
     const file = excelInput.files?.[0]
     if (!file) return
